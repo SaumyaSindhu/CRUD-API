@@ -12,7 +12,8 @@ A clean, minimal Express.js CRUD API for managing tasks. It ships with a live Sw
 
 ## Preview
 
-> Add the screenshot you shared here once it is saved in the repo as `docs/swagger-preview.png`.
+<img width="1919" height="1077" alt="Screenshot 2026-08-01 181344" src="https://github.com/user-attachments/assets/c64c543f-fa24-46b5-abc8-3c7ce7c44367" />
+
 
 ## API Overview
 
