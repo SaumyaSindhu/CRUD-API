@@ -55,3 +55,44 @@ export const createTask = (req, res) => {
 
     res.status(201).json(newTask);
 }
+
+export const updateTask = (req, res) => {
+    const id = Number(req.params.id);
+
+    const task = tasks.find(task => task.id === id);
+
+    if (!task) {
+      return res.status(404).json({
+        error: `Task ${id} not found`,
+      });
+    }
+
+    const { title, done } = req.body;
+
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        error: "Title is required",
+      });
+    }
+
+    task.title = title;
+    task.done = done;
+
+    res.json(task);
+}
+
+export const deleteTask = (req, res) => {
+    const id = Number(req.params.id);
+
+    const index = tasks.findIndex(task => task.id === id);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: `Task ${id} not found`,
+      });
+    }
+
+    tasks.splice(index, 1);
+
+    res.status(204).send();
+}
