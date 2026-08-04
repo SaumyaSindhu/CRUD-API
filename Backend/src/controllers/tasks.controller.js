@@ -35,15 +35,20 @@ export const createTask = (req, res) => {
         })
     }
 
-    const id = tasks.length + 1;
+    const insert = db.prepare(`
+      INSERT INTO tasks (title, done)
+      VALUES (?, ?)
+    `);
 
-    const newTask = {
-        id,
-        title,
-        done: false
-    };
+    const result = insert.run(title.trim(), 0);
 
-    tasks.push(newTask);
+    const newTask = db.prepare(`
+      SELECT *
+      FROM tasks
+      WHERE id = ?
+    `).get(result.lastInsertRowid);
+
+    newTask.done = Boolean(newTask.done);
 
     res.status(201).json(newTask);
 }
