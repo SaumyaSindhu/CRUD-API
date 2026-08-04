@@ -1,4 +1,5 @@
 import express from "express";
+import "./db/database.js";
 import taskRouter from "./routes/tasks.routes.js";
 
 import swaggerUi from "swagger-ui-express";
