@@ -1,95 +1,122 @@
 import db from "../db/database.js";
 
 export const getAllTasks = (req, res) => {
-    const tasks = db.prepare(
-      `SELECT * FROM tasks`
-    ).all();
+  const tasks = db.prepare(`SELECT * FROM tasks`).all();
 
-    res.json(tasks);
-}
+  res.json(tasks);
+};
 
 export const getTaskById = (req, res) => {
-    const id = Number(req.params.id);
+  const id = Number(req.params.id);
 
-    const task = db.prepare(
+  const task = db
+    .prepare(
       `SELECT *
        FROM tasks
-      WHERE id = ?`
-    ).get(id);
+      WHERE id = ?`,
+    )
+    .get(id);
 
-    if (!task) {
-        return res.status(404).json({
-            message: "Task not found"
-        });
-    }
+  if (!task) {
+    return res.status(404).json({
+      message: "Task not found",
+    });
+  }
 
-    res.json(task);
-}
+  res.json(task);
+};
 
 export const createTask = (req, res) => {
-    const { title } = req.body;
+  const { title } = req.body;
 
-    if (!title || title.trim() === "") {
-        return res.status(400).json({
-            error: "Title is required"
-        })
-    }
+  if (!title || title.trim() === "") {
+    return res.status(400).json({
+      error: "Title is required",
+    });
+  }
 
-    const insert = db.prepare(`
+  const insert = db.prepare(`
       INSERT INTO tasks (title, done)
       VALUES (?, ?)
     `);
 
-    const result = insert.run(title.trim(), 0);
+  const result = insert.run(title.trim(), 0);
 
-    const newTask = db.prepare(`
+  const newTask = db
+    .prepare(
+      `
       SELECT *
       FROM tasks
       WHERE id = ?
-    `).get(result.lastInsertRowid);
+    `,
+    )
+    .get(result.lastInsertRowid);
 
-    newTask.done = Boolean(newTask.done);
+  newTask.done = Boolean(newTask.done);
 
-    res.status(201).json(newTask);
-}
+  res.status(201).json(newTask);
+};
 
 export const updateTask = (req, res) => {
-    const id = Number(req.params.id);
+  const id = Number(req.params.id);
+  const { title, done } = req.body;
 
-    const task = tasks.find(task => task.id === id);
+  if (!title || title.trim() === "") {
+    return res.status(400).json({
+      error: "Title is required",
+    });
+  }
 
-    if (!task) {
-      return res.status(404).json({
-        error: `Task ${id} not found`,
-      });
-    }
+  if (typeof done !== "boolean") {
+    return res.status(400).json({
+      error: "Done must be a boolean",
+    });
+  }
 
-    const { title, done } = req.body;
+  const update = db.prepare(`
+        UPDATE tasks
+        SET title = ?, done = ?
+        WHERE id = ?
+    `);
 
-    if (!title || title.trim() === "") {
-      return res.status(400).json({
-        error: "Title is required",
-      });
-    }
+  const result = update.run(title.trim(), done ? 1 : 0, id);
 
-    task.title = title;
-    task.done = done;
+  if (result.changes === 0) {
+    return res.status(404).json({
+      error: `Task ${id} not found`,
+    });
+  }
 
-    res.json(task);
-}
+  const updatedTask = db
+    .prepare(
+      `
+        SELECT *
+        FROM tasks
+        WHERE id = ?
+    `,
+    )
+    .get(id);
+
+  updatedTask.done = Boolean(updatedTask.done);
+
+  res.json(updatedTask);
+};
 
 export const deleteTask = (req, res) => {
-    const id = Number(req.params.id);
+  const id = Number(req.params.id);
 
-    const index = tasks.findIndex(task => task.id === id);
+  const remove = db.prepare(`
+        DELETE FROM tasks
+        WHERE id = ?
+    `);
 
-    if (index === -1) {
-      return res.status(404).json({
-        error: `Task ${id} not found`,
-      });
-    }
+  const result = remove.run(id);
 
-    tasks.splice(index, 1);
+  if (result.changes === 0) {
+    return res.status(404).json({
+      error: `Task ${id} not found`,
+    });
+  }
 
-    res.status(204).send();
-}
+  res.sendStatus(204);
+};
