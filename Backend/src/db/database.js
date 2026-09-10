@@ -1,25 +1,51 @@
-import Database from "better-sqlite3";
+import pg from "pg";
 
-const db = new Database("tasks.db");
+const { Pool } = pg;
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        done INTEGER NOT NULL
-    );
-`)
+const connectionString =
+  process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/tasksdb";
 
-const count = db.prepare("SELECT COUNT(*) AS total FROM tasks").get();
+const pool = new Pool({ connectionString });
 
-if (count.total === 0) {
-    const insert = db.prepare(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)"
-    );
+async function waitForDatabase(maxAttempts = 30) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await pool.query("SELECT 1");
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
 
-    insert.run("Learn Express", 0);
-    insert.run("Build CRUD API", 0);
-    insert.run("Learn SQLite", 0);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
 }
 
-export default db;
+async function initializeDatabase() {
+  await waitForDatabase();
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      done BOOLEAN NOT NULL DEFAULT FALSE
+    );
+  `);
+
+  const { rows } = await pool.query("SELECT COUNT(*)::int AS total FROM tasks");
+
+  if (Number(rows[0].total) === 0) {
+    await pool.query(
+      "INSERT INTO tasks (title, done) VALUES ($1, $2), ($3, $4), ($5, $6)",
+      ["Learn Express", false, "Build CRUD API", false, "Learn SQLite", false]
+    );
+  }
+}
+
+initializeDatabase().catch((error) => {
+  console.error("Database initialization failed:", error.message);
+  process.exit(1);
+});
+
+export default pool;

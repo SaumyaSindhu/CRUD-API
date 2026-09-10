@@ -1,21 +1,19 @@
-import db from "../db/database.js";
+import {
+  getAllTasksRepo,
+  getTaskByIdRepo,
+  createTaskRepo,
+  updateTaskRepo,
+  deleteTaskRepo,
+} from "../repositories/task.repository.js";
 
-export const getAllTasks = (req, res) => {
-  const tasks = db.prepare(`SELECT * FROM tasks`).all();
-
+export const getAllTasks = async (req, res) => {
+  const tasks = await getAllTasksRepo();
   res.json(tasks);
 };
 
-export const getTaskById = (req, res) => {
+export const getTaskById = async (req, res) => {
   const id = Number(req.params.id);
-
-  const task = db
-    .prepare(
-      `SELECT *
-       FROM tasks
-      WHERE id = ?`,
-    )
-    .get(id);
+  const task = await getTaskByIdRepo(id);
 
   if (!task) {
     return res.status(404).json({
@@ -26,7 +24,7 @@ export const getTaskById = (req, res) => {
   res.json(task);
 };
 
-export const createTask = (req, res) => {
+export const createTask = async (req, res) => {
   const { title } = req.body;
 
   if (!title || title.trim() === "") {
@@ -35,29 +33,11 @@ export const createTask = (req, res) => {
     });
   }
 
-  const insert = db.prepare(`
-      INSERT INTO tasks (title, done)
-      VALUES (?, ?)
-    `);
-
-  const result = insert.run(title.trim(), 0);
-
-  const newTask = db
-    .prepare(
-      `
-      SELECT *
-      FROM tasks
-      WHERE id = ?
-    `,
-    )
-    .get(result.lastInsertRowid);
-
-  newTask.done = Boolean(newTask.done);
-
+  const newTask = await createTaskRepo(title.trim());
   res.status(201).json(newTask);
 };
 
-export const updateTask = (req, res) => {
+export const updateTask = async (req, res) => {
   const id = Number(req.params.id);
   const { title, done } = req.body;
 
@@ -73,46 +53,22 @@ export const updateTask = (req, res) => {
     });
   }
 
-  const update = db.prepare(`
-        UPDATE tasks
-        SET title = ?, done = ?
-        WHERE id = ?
-    `);
+  const updatedTask = await updateTaskRepo(id, title.trim(), done);
 
-  const result = update.run(title.trim(), done ? 1 : 0, id);
-
-  if (result.changes === 0) {
+  if (!updatedTask) {
     return res.status(404).json({
       error: `Task ${id} not found`,
     });
   }
 
-  const updatedTask = db
-    .prepare(
-      `
-        SELECT *
-        FROM tasks
-        WHERE id = ?
-    `,
-    )
-    .get(id);
-
-  updatedTask.done = Boolean(updatedTask.done);
-
   res.json(updatedTask);
 };
 
-export const deleteTask = (req, res) => {
+export const deleteTask = async (req, res) => {
   const id = Number(req.params.id);
+  const wasDeleted = await deleteTaskRepo(id);
 
-  const remove = db.prepare(`
-        DELETE FROM tasks
-        WHERE id = ?
-    `);
-
-  const result = remove.run(id);
-
-  if (result.changes === 0) {
+  if (!wasDeleted) {
     return res.status(404).json({
       error: `Task ${id} not found`,
     });
